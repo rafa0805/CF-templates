@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Resources:
-  FirstVPC:
+  VPC01:
     Type: AWS::EC2::VPC
     Properties: 
       CidrBlock: 10.0.0.0/16
@@ -16,13 +16,13 @@ Resources:
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref FirstVPC
+      VpcId: !Ref VPC01
       InternetGatewayId: !Ref InternetGateway
-  FrontendRouteTable:
+  FrontendRouteTable: #Route Table for Public settings
     Type: AWS::EC2::RouteTable
     DependsOn: AttachGateway
     Properties:
-      VpcId: !Ref FirstVPC
+      VpcId: !Ref VPC01
       Tags:
       - Key: Name
         Value: RafaFrontendRoute-fromCF
@@ -33,17 +33,33 @@ Resources:
       RouteTableId: !Ref FrontendRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
-  FrontendSubnet: #How to select implicitly the AZ??
+  FrontendSubnet01: #Public Subnet settings
     Type: AWS::EC2::Subnet
     Properties:
       CidrBlock: 10.0.1.0/24
       MapPublicIpOnLaunch: "True"
-      VpcId: !Ref FirstVPC
+      VpcId: !Ref VPC01
+      AvailabilityZone: ap-northeast-1a
       Tags:
       - Key: Name
         Value: RafaFrontendSubnet-fromCF
-  FrontendSubnetRouteTableAssociation:
+  FrontendSubnetRouteTableAssociation01:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref FrontendSubnet
+      SubnetId: !Ref FrontendSubnet01
+      RouteTableId: !Ref FrontendRouteTable
+  FrontendSubnet02: #Public Subnet settings
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: "True"
+      VpcId: !Ref VPC01
+      AvailabilityZone: ap-northeast-1c
+      Tags:
+      - Key: Name
+        Value: RafaFrontendSubnet-fromCF
+  FrontendSubnetRouteTableAssociation02:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref FrontendSubnet02
       RouteTableId: !Ref FrontendRouteTable
