@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "None"
+
+# ============================================================#
+# Parameters to be input from console
+# ============================================================#
+Parameters:
+  ProjectPrefix:
+    Type: "String"
+    AllowedPattern: ".+"
+    Description: "(Required) This value will be used as prefix of created resources."
+    ConstraintDescription: "\"ProjectPrefix\"is required and must match pattern \".+\"."
+  VPCStackName:
+    Description: "Stack name of VPC to place the resources of this template"
+    Type: "String"
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: "AWS::EC2::KeyPair::KeyName"
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 58.158.165.10/32
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+# ============================================================#
+# Value sets to be used in this template
+# ============================================================#
+Mappings:
+  AWSInstanceType2Arch:
+    t2.nano:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+  AWSInstanceType2NATArch:
+    t2.nano:
+      Arch: NATHVM64
+    t2.micro:
+      Arch: NATHVM64
+  AWSRegionArch2AMI:
+    ap-northeast-1:
+      HVM64: ami-077527e5c50f1d6d1
+      HVMG2: ami-09d0e0e099ecabba2
+    ap-northeast-2:
+      HVM64: ami-0493ab99920f410fc
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-3:
+      HVM64: ami-01344f6f63a4decc1
+      HVMG2: NOT_SUPPORTED
+
+# ============================================================#
+# Resources to be created from this template
+# ============================================================#
+Resources:
+  # ----------------------------------------------------------#
+  # Define EC2 Instance
+  # ----------------------------------------------------------#
+  MyFirstEC2Instance: 
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: "ami-0d864b69bc8b30198"
+      InstanceType: !Ref "InstanceType"
+      SubnetId: 
+        Fn::ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-PublicSubnet1"
+      SecurityGroupIds: 
+        - !Ref "InstanceSecurityGroup"
+      KeyName: !Ref "KeyName"
+      UserData: !Base64 
+        'Fn::Join':
+          - ""
+          - - IPAddress=
+            - !Ref "MyFirstElasticIP"
+      Tags:
+        - Key: "Name"
+          Value: !Sub "${ProjectPrefix}-${AWS::StackName}-EC2"
+  MyFirstElasticIP:
+    Type: "AWS::EC2::EIP"
+  EC2IPAssoc:
+    Type: "AWS::EC2::EIPAssociation"
+    Properties:
+      InstanceId: !Ref "MyFirstEC2Instance"
+      EIP: !Ref "MyFirstElasticIP"
+
+  # ----------------------------------------------------------#
+  # Define Security Groups
+  # ----------------------------------------------------------#
+  InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Enable SSH access via port 22"
+      VpcId:
+        Fn::ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-VPC"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref "SSHLocation"
+        - IpProtocol: "tcp"
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: !Ref "SSHLocation"
+
+# ============================================================#
+# Interface of this template
+# ============================================================#
+Outputs:
+
+  MyFirstEC2InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value: !Ref "MyFirstEC2Instance"
+    Export:
+      Name: !Sub "${ProjectPrefix}-${AWS::StackName}-EC2-a"
+
+  MyFirstEC2InstanceAZ:
+    Description: Availability Zone of the newly created EC2 instance
+    Value: !GetAtt ["MyFirstEC2Instance", "AvailabilityZone"]
+
+  MyFirstEC2InstancePublicDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value: !GetAtt ["MyFirstEC2Instance", "PublicDnsName"]
+
+  MyFirstEC2InstanceEIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt 
+      - MyFirstEC2Instance
+      - PublicIp

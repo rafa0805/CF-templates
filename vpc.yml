@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "VPC with Public Subnet & Private Subnet Sets on each AZs. Effective only at Region \"Asia Pacific Tokyo\""
+
+# ============================================================#
+# Parameters to be input from console
+# ============================================================#
+Parameters:
+  ProjectPrefix:
+    Type: "String"
+    AllowedPattern: ".+"
+    Description: "(Required) This value will be used as prefix of created resources."
+    ConstraintDescription: "\"ProjectPrefix\"is required and must match pattern \".+\"."
+
+# ============================================================#
+# Resources to be created from this template
+# ============================================================#
+Resources:
+  # ----------------------------------------------------------#
+  # Define VPC
+  # ----------------------------------------------------------#
+  MyVPC:
+    Type: "AWS::EC2::VPC"
+    Properties: 
+      CidrBlock: "10.0.0.0/16"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-VPC"
+  MyInternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-IGW"
+  AttachGateway:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref "MyVPC"
+      InternetGatewayId: !Ref "MyInternetGateway"
+
+  # ----------------------------------------------------------#
+  # Define Route Tables
+  # ----------------------------------------------------------#
+  MyPrivateRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref "MyVPC"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateRT"
+
+  MyPublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    DependsOn: "AttachGateway"
+    Properties:
+      VpcId: !Ref "MyVPC"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicRT"
+  PublicRoute:
+    Type: "AWS::EC2::Route"
+    DependsOn: "AttachGateway"
+    Properties:
+      RouteTableId: !Ref "MyPublicRouteTable"
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref "MyInternetGateway"
+
+  # ----------------------------------------------------------#
+  # Define Public Subnets
+  # ----------------------------------------------------------#
+  MyPublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: "10.0.1.0/24"
+      MapPublicIpOnLaunch: "True"
+      VpcId: !Ref "MyVPC"
+      AvailabilityZone: "ap-northeast-1a"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicSubnet1"
+  PublicSubnetRouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref "MyPublicSubnet1"
+      RouteTableId: !Ref "MyPublicRouteTable"
+
+  MyPublicSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: "10.0.2.0/24"
+      MapPublicIpOnLaunch: "True"
+      VpcId: !Ref "MyVPC"
+      AvailabilityZone: "ap-northeast-1c"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicSubnet2"
+  PublicSubnetRouteTableAssociation2:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref "MyPublicSubnet2"
+      RouteTableId: !Ref "MyPublicRouteTable"
+
+  MyPublicSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: "10.0.3.0/24"
+      MapPublicIpOnLaunch: "True"
+      VpcId: !Ref "MyVPC"
+      AvailabilityZone: "ap-northeast-1d"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicSubnet3"
+  PublicSubnetRouteTableAssociation3:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref "MyPublicSubnet3"
+      RouteTableId: !Ref "MyPublicRouteTable"
+
+  # ----------------------------------------------------------#
+  # Define Private Subnets
+  # ----------------------------------------------------------#
+  MyPrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: "10.0.4.0/24"
+      VpcId: !Ref "MyVPC"
+      AvailabilityZone: "ap-northeast-1a"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateSubnet1"
+  PrivateSubnetRouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref "MyPrivateSubnet1"
+      RouteTableId: !Ref "MyPrivateRouteTable"
+
+  MyPrivateSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: "10.0.5.0/24"
+      VpcId: !Ref "MyVPC"
+      AvailabilityZone: "ap-northeast-1c"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateSubnet2"
+  PrivateSubnetRouteTableAssociation2:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref "MyPrivateSubnet2"
+      RouteTableId: !Ref "MyPrivateRouteTable"
+
+  MyPrivateSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: "10.0.6.0/24"
+      VpcId: !Ref "MyVPC"
+      AvailabilityZone: "ap-northeast-1d"
+      Tags:
+      - Key: "Name"
+        Value: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateSubnet3"
+  PrivateSubnetRouteTableAssociation3:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref "MyPrivateSubnet3"
+      RouteTableId: !Ref "MyPrivateRouteTable"
+
+# ============================================================#
+# Interface of this template
+# ============================================================#
+Outputs:
+
+  MyVPC:
+    Value: !Ref "MyVPC"
+    Export:
+      Name: !Sub "${ProjectPrefix}-${AWS::StackName}-VPC"
+
+  MyPublicSubnet1:
+    Value: !Ref "MyPublicSubnet1"
+    Export:
+      Name: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicSubnet1"
+
+  MyPublicSubnet2:
+    Value: !Ref "MyPublicSubnet2"
+    Export:
+      Name: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicSubnet2"
+
+  MyPublicSubnet3:
+    Value: !Ref "MyPublicSubnet3"
+    Export:
+     Name: !Sub "${ProjectPrefix}-${AWS::StackName}-PublicSubnet3"
+
+  MyPrivateSubnet1:
+    Value: !Ref "MyPrivateSubnet1"
+    Export:
+      Name: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateSubnet1"
+
+  MyPrivateSubnet2:
+    Value: !Ref "MyPrivateSubnet2"
+    Export:
+      Name: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateSubnet2"
+
+  MyPrivateSubnet3:
+    Value: !Ref "MyPrivateSubnet3"
+    Export:
+     Name: !Sub "${ProjectPrefix}-${AWS::StackName}-PrivateSubnet3"
