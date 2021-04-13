@@ -16,7 +16,7 @@ Parameters:
 # ============================================================#
 Resources:
   # ----------------------------------------------------------#
-  # Define VPC
+  # Define VPC with a Internet Gateway
   # ----------------------------------------------------------#
   MyVPC:
     Type: "AWS::EC2::VPC"
@@ -71,7 +71,6 @@ Resources:
     Type: "AWS::EC2::Subnet"
     Properties:
       CidrBlock: "10.0.1.0/24"
-      MapPublicIpOnLaunch: "True"
       VpcId: !Ref "MyVPC"
       AvailabilityZone: "ap-northeast-1a"
       Tags:
@@ -87,7 +86,6 @@ Resources:
     Type: "AWS::EC2::Subnet"
     Properties:
       CidrBlock: "10.0.2.0/24"
-      MapPublicIpOnLaunch: "True"
       VpcId: !Ref "MyVPC"
       AvailabilityZone: "ap-northeast-1c"
       Tags:
@@ -103,7 +101,6 @@ Resources:
     Type: "AWS::EC2::Subnet"
     Properties:
       CidrBlock: "10.0.3.0/24"
-      MapPublicIpOnLaunch: "True"
       VpcId: !Ref "MyVPC"
       AvailabilityZone: "ap-northeast-1d"
       Tags:
