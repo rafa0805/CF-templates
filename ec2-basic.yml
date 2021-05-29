@@ -13,11 +13,13 @@ Parameters:
   VPCStackName:
     Description: "Stack name of VPC to place the resources of this template"
     Type: "String"
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
-    Type: "AWS::EC2::KeyPair::KeyName"
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
-  InstanceType:
+  ImageId_1:
+    Description: Image Id to used for EC2 instance
+    Type: String
+    Default: ami-0d864b69bc8b30198
+    AllowedPattern: '(ami-[\d\w]+)'
+    ConstraintDescription: must be a valid AMI id.
+  InstanceType_1:
     Description: WebServer EC2 instance type
     Type: String
     Default: t2.micro
@@ -25,7 +27,7 @@ Parameters:
       - t2.nano
       - t2.micro
     ConstraintDescription: must be a valid EC2 instance type.
-  SSHLocation:
+  SSHSource:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
     MinLength: '9'
@@ -33,31 +35,35 @@ Parameters:
     Default: 58.158.165.10/32
     AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  SSHKeyName_1:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: "AWS::EC2::KeyPair::KeyName"
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
 
 # ============================================================#
 # Value sets to be used in this template
 # ============================================================#
-Mappings:
-  AWSInstanceType2Arch:
-    t2.nano:
-      Arch: HVM64
-    t2.micro:
-      Arch: HVM64
-  AWSInstanceType2NATArch:
-    t2.nano:
-      Arch: NATHVM64
-    t2.micro:
-      Arch: NATHVM64
-  AWSRegionArch2AMI:
-    ap-northeast-1:
-      HVM64: ami-077527e5c50f1d6d1
-      HVMG2: ami-09d0e0e099ecabba2
-    ap-northeast-2:
-      HVM64: ami-0493ab99920f410fc
-      HVMG2: NOT_SUPPORTED
-    ap-northeast-3:
-      HVM64: ami-01344f6f63a4decc1
-      HVMG2: NOT_SUPPORTED
+# Mappings:
+#   AWSInstanceType2Arch:
+#     t2.nano:
+#       Arch: HVM64
+#     t2.micro:
+#       Arch: HVM64
+#   AWSInstanceType2NATArch:
+#     t2.nano:
+#       Arch: NATHVM64
+#     t2.micro:
+#       Arch: NATHVM64
+#   AWSRegionArch2AMI:
+#     ap-northeast-1:
+#       HVM64: ami-077527e5c50f1d6d1
+#       HVMG2: ami-09d0e0e099ecabba2
+#     ap-northeast-2:
+#       HVM64: ami-0493ab99920f410fc
+#       HVMG2: NOT_SUPPORTED
+#     ap-northeast-3:
+#       HVM64: ami-01344f6f63a4decc1
+#       HVMG2: NOT_SUPPORTED
 
 # ============================================================#
 # Resources to be created from this template
@@ -69,13 +75,14 @@ Resources:
   MyFirstEC2Instance: 
     Type: "AWS::EC2::Instance"
     Properties:
-      ImageId: "ami-0d864b69bc8b30198"
-      InstanceType: !Ref "InstanceType"
+      ImageId: !Ref "ImageId_1"
+      InstanceType: !Ref "InstanceType_1"
       SubnetId: 
-        Fn::ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-PublicSubnet1"
+        !ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-PublicSubnet1"
       SecurityGroupIds: 
-        - !Ref "InstanceSecurityGroup"
-      KeyName: !Ref "KeyName"
+        - !Ref "SecurityGroupLimited"
+        - !Ref "SecurityGroupOpen"
+      KeyName: !Ref "SSHKeyName_1"
       UserData: !Base64 
         'Fn::Join':
           - ""
@@ -95,21 +102,33 @@ Resources:
   # ----------------------------------------------------------#
   # Define Security Groups
   # ----------------------------------------------------------#
-  InstanceSecurityGroup:
+  SecurityGroupLimited:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupDescription: "Enable SSH access via port 22"
       VpcId:
-        Fn::ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-VPC"
+        !ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-VPC"
       SecurityGroupIngress:
         - IpProtocol: "tcp"
           FromPort: "22"
           ToPort: "22"
-          CidrIp: !Ref "SSHLocation"
+          CidrIp: !Ref "SSHSource"
+
+  SecurityGroupOpen:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Enable HTTP(S) access via port 80(443)"
+      VpcId:
+        !ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-VPC"
+      SecurityGroupIngress:
         - IpProtocol: "tcp"
           FromPort: "80"
           ToPort: "80"
-          CidrIp: !Ref "SSHLocation"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: "443"
+          ToPort: "443"
+          CidrIp: "0.0.0.0/0"
 
 # ============================================================#
 # Interface of this template

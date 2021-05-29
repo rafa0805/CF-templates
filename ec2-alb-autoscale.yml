@@ -38,27 +38,27 @@ Parameters:
 # ============================================================#
 # Value sets to be used in this template
 # ============================================================#
-Mappings:
-  AWSInstanceType2Arch:
-    t2.nano:
-      Arch: HVM64
-    t2.micro:
-      Arch: HVM64
-  AWSInstanceType2NATArch:
-    t2.nano:
-      Arch: NATHVM64
-    t2.micro:
-      Arch: NATHVM64
-  AWSRegionArch2AMI:
-    ap-northeast-1:
-      HVM64: ami-077527e5c50f1d6d1
-      HVMG2: ami-09d0e0e099ecabba2
-    ap-northeast-2:
-      HVM64: ami-0493ab99920f410fc
-      HVMG2: NOT_SUPPORTED
-    ap-northeast-3:
-      HVM64: ami-01344f6f63a4decc1
-      HVMG2: NOT_SUPPORTED
+# Mappings:
+#   AWSInstanceType2Arch:
+#     t2.nano:
+#       Arch: HVM64
+#     t2.micro:
+#       Arch: HVM64
+#   AWSInstanceType2NATArch:
+#     t2.nano:
+#       Arch: NATHVM64
+#     t2.micro:
+#       Arch: NATHVM64
+#   AWSRegionArch2AMI:
+#     ap-northeast-1:
+#       HVM64: ami-077527e5c50f1d6d1
+#       HVMG2: ami-09d0e0e099ecabba2
+#     ap-northeast-2:
+#       HVM64: ami-0493ab99920f410fc
+#       HVMG2: NOT_SUPPORTED
+#     ap-northeast-3:
+#       HVM64: ami-01344f6f63a4decc1
+#       HVMG2: NOT_SUPPORTED
 
 
 # ============================================================#
@@ -77,7 +77,8 @@ Resources:
       SubnetId: 
         Fn::ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-PublicSubnet1"
       SecurityGroupIds: 
-        - !Ref "InstanceSecurityGroup"
+        - !Ref "SecurityGroupLimited"
+        - !Ref "SecurityGroupOpen"
       KeyName: !Ref "KeyName"
       UserData: !Base64 
         'Fn::Join':
@@ -98,7 +99,7 @@ Resources:
   # ----------------------------------------------------------#
   # Define Security Groups
   # ----------------------------------------------------------#
-  InstanceSecurityGroup:
+  SecurityGroupLimited:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupDescription: "Enable SSH access via port 22"
@@ -109,14 +110,23 @@ Resources:
           FromPort: "22"
           ToPort: "22"
           CidrIp: !Ref "SSHLocation"
+          
+  SecurityGroupOpenUnderALB:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Enable HTTP access via port 80 for ALB"
+      VpcId:
+        Fn::ImportValue : !Sub "${ProjectPrefix}-${VPCStackName}-VPC"
+      SecurityGroupIngress:
         - IpProtocol: "tcp"
           FromPort: "80"
           ToPort: "80"
           SourceSecurityGroupId: !GetAtt ["ALBSecurityGroup", "GroupId"]
+
   ALBSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
-      GroupDescription: "Enable HTTP access via port 80"
+      GroupDescription: "Enable HTTP(S) access via port 80(443)"
       VpcId:
         Fn::ImportValue: !Sub "${ProjectPrefix}-${VPCStackName}-VPC"
       SecurityGroupIngress:
@@ -141,7 +151,7 @@ Resources:
       Targets: 
         - Id: !Ref MyFirstEC2Instance
           Port: 80
-#        - Id:
+#        - Id: Add more instances here
 #          Port: 80
       Protocol: "HTTP"
       Port: "80"
